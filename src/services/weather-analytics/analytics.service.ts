@@ -1,6 +1,6 @@
 import { redisClient } from "../../config";
 import { Weather } from "../../models";
-import { TGetCitiesAnalytics, TGetSingleCityAnalytics } from "../../utilities";
+import { TGetCitiesAnalytics, TGetCitiesAnalyticsResponse, TGetSingleCityAnalytics, TGetSingleCityAnalyticsResponse } from "../../utilities";
 import { BaseService } from "../base.service";
 import { weatherService } from "./weather.service";
 
@@ -9,7 +9,7 @@ class AnalyticsService extends BaseService<Weather> {
     super(Weather);
   }
 
-  async getCitiesAnalytics(data: TGetCitiesAnalytics) {
+  async getCitiesAnalytics(data: TGetCitiesAnalytics): Promise<TGetCitiesAnalyticsResponse> {
     try {
       const cacheKey = `cities: ${data.cities.join(",")}`;
 
@@ -75,7 +75,7 @@ class AnalyticsService extends BaseService<Weather> {
     }
   }
 
-  async getSingleCityAnalytics(data: TGetSingleCityAnalytics) {
+  async getSingleCityAnalytics(data: TGetSingleCityAnalytics): Promise<TGetSingleCityAnalyticsResponse> {
     try {
       const cacheKey = `city: ${data.city}`;
 
