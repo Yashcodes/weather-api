@@ -1,8 +1,9 @@
 import "dotenv/config";
 import express from "express";
-import { db } from "./config";
+import { db, redisClient } from "./config";
 import "./models";
 import apiRouter from "./api/routes";
+import "./config/redis.config";
 
 const app = express();
 app.use(express.json());
@@ -20,6 +21,8 @@ async function startServer() {
     await db.sync();
 
     console.log("Models Synced Successfully.");
+
+    await redisClient.connect();
 
     app.listen(port, () => {
       console.log(`Server started on port ${port}`);

@@ -2,7 +2,6 @@ import {
   axiosInstance,
   TGetCityWeather,
   TGetForecast,
-  TGetWeatherByCoordinates,
 } from "../../utilities";
 
 class WeatherService {

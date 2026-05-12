@@ -1,7 +1,7 @@
+import { redisClient } from "../../config";
 import { Weather } from "../../models";
 import { TGetCitiesAnalytics, TGetSingleCityAnalytics } from "../../utilities";
 import { BaseService } from "../base.service";
-import { geocodingService } from "./geocoding.service";
 import { weatherService } from "./weather.service";
 
 class AnalyticsService extends BaseService<Weather> {
@@ -11,6 +11,12 @@ class AnalyticsService extends BaseService<Weather> {
 
   async getCitiesAnalytics(data: TGetCitiesAnalytics) {
     try {
+      const cacheKey = `cities: ${data.cities.join(",")}`;
+
+      const cacheData = await redisClient.get(cacheKey);
+
+      if (cacheData) return JSON.parse(cacheData);
+
       const weatherData = await Promise.all(
         data.cities.map((city) => weatherService.getCityWeather({ city })),
       );
@@ -43,7 +49,7 @@ class AnalyticsService extends BaseService<Weather> {
         .filter((city) => city.temperature > 35)
         .map((city) => city.city);
 
-      return {
+      const response = {
         averageTemperature,
         highestTemperature: {
           city: highestTemperature.city,
@@ -57,6 +63,12 @@ class AnalyticsService extends BaseService<Weather> {
 
         hotCities,
       };
+
+      await redisClient.set(cacheKey, JSON.stringify(response), {
+        EX: 300,
+      });
+
+      return response;
     } catch (error) {
       console.log("analytics error", error);
       throw error;
@@ -65,28 +77,43 @@ class AnalyticsService extends BaseService<Weather> {
 
   async getSingleCityAnalytics(data: TGetSingleCityAnalytics) {
     try {
-        const currentWeather = await weatherService.getCityWeather({ city: data.city });
+      const cacheKey = `city: ${data.city}`;
 
-        const forecast = await weatherService.getForecast({ city: data.city });
+      const cacheData = await redisClient.get(cacheKey);
 
-        const warning = currentWeather.main.temp > 35 ? "Temperature exceeds 35 C" : null;
+      if (cacheData) return JSON.parse(cacheData);
 
-        return {
-            city: data.city,
-            currentTemperature: currentWeather.main.temp,
-            minTemperature: currentWeather.main.temp_min,
-            maxTemperature: currentWeather.main.temp_max,
-            humidity: currentWeather.main.humidity,
-            warning,
-            forecast: forecast.list.slice(0, 5).map((item: any) => ({
-                data: item.dt_txt,
-                temperature: item.main.temp,
-                minTemperature: item.main.temp_min,
-                maxTemperature: item.main.temp_max
-            }))
-        }
-    } catch(error) {
-        throw error;
+      const currentWeather = await weatherService.getCityWeather({
+        city: data.city,
+      });
+
+      const forecast = await weatherService.getForecast({ city: data.city });
+
+      const warning =
+        currentWeather.main.temp > 35 ? "Temperature exceeds 35 C" : null;
+
+      const response = {
+        city: data.city,
+        currentTemperature: currentWeather.main.temp,
+        minTemperature: currentWeather.main.temp_min,
+        maxTemperature: currentWeather.main.temp_max,
+        humidity: currentWeather.main.humidity,
+        warning,
+        forecast: forecast.list.slice(0, 5).map((item: any) => ({
+          data: item.dt_txt,
+          temperature: item.main.temp,
+          minTemperature: item.main.temp_min,
+          maxTemperature: item.main.temp_max,
+        })),
+      };
+
+      await redisClient.set(cacheKey, JSON.stringify(response), {
+        EX: 300,
+      });
+
+      return response;
+    } catch (error) {
+      throw error;
     }
   }
 }
